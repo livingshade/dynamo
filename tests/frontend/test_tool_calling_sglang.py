@@ -22,7 +22,7 @@ import shutil
 import signal
 import time
 from dataclasses import dataclass
-from typing import Any, Generator
+from typing import Any, Generator, Sequence
 
 import psutil
 import pytest
@@ -141,7 +141,16 @@ TOPOLOGIES = ("chat_processor_frontend", "rust_parsers")
 class WorkerProcess(ManagedProcess):
     """backend worker for the tool-calling tests."""
 
-    def __init__(self, request, *, system_port: int, fpm_port: int, topology: str):
+    def __init__(
+        self,
+        request,
+        *,
+        system_port: int,
+        fpm_port: int,
+        topology: str,
+        model: str = MODEL_NAME,
+        extra_args: Sequence[str] = (),
+    ):
         env = os.environ.copy()
         env["DYN_LOG"] = "info"
         env["DYN_SYSTEM_PORT"] = str(system_port)
@@ -155,9 +164,9 @@ class WorkerProcess(ManagedProcess):
             "-m",
             "dynamo.sglang",
             "--model-path",
-            MODEL_NAME,
+            model,
             "--served-model-name",
-            MODEL_NAME,
+            model,
             "--trust-remote-code",
         ]
         if topology == "rust_parsers":
@@ -167,6 +176,7 @@ class WorkerProcess(ManagedProcess):
                 "--dyn-tool-call-parser",
                 "qwen25",
             ]
+        command.extend(extra_args)
         command.extend(build_gpu_mem_args("build_sglang_gpu_mem_args", env=env))
 
         super().__init__(
